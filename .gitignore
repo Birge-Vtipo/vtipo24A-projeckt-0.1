@@ -2,7 +2,8 @@
 node_modules/
 
 # Next.js generated files
-.next/
+.next/*
+!.next/types/
 out/
 
 # Local environment files
