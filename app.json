@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Birge",
+    "slug": "birge",
+    "version": "2.5.0",
+    "orientation": "portrait",
+    "icon": "./assets/birge-icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "kz.birge.mobile",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "kz.birge.mobile",
+      "softwareKeyboardLayoutMode": "resize",
+      "versionCode": 10,
+      "adaptiveIcon": {
+        "backgroundColor": "#393185",
+        "foregroundImage": "./assets/birge-foreground.png",
+        "monochromeImage": "./assets/birge-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": "Birge дауыстық хабарлама жазу үшін микрофонға рұқсат сұрайды.",
+          "photosPermission": "Birge жарияланымға фото қосу үшін галереяға рұқсат сұрайды.",
+          "cameraPermission": false
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Birge дауыстық хабарлама жазу үшін микрофонға рұқсат сұрайды."
+        }
+      ],
+      "expo-video",
+      "./plugins/with-voice-permission.js",
+      "./plugins/live-notifications"
+    ],
+    "scheme": "birge"
+  }
+}
