@@ -72,5 +72,8 @@ work/
 *.aab
 *.idsig
 *.zip
+<<<<<<< HEAD
 
 .next/
+=======
+>>>>>>> 1c93e9d087ecac5d308d25f86e9dfb4975177dd1
