@@ -1,19 +1,74 @@
-# Dependencies
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
 node_modules/
 
-# Next.js generated files
-.next/*
-!.next/types/
-out/
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
 
-# Local environment files
-.env*
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+.env
+.env.*
 !.env.example
 
-# Logs and local caches
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# typescript
 *.tsbuildinfo
-.vercel/
+
+# generated native folders
+/ios
+/android
+
+# WhatsApp browser login, phone numbers and server secrets
+whatsapp-bot/private/
+whatsapp-bot/*.log
+.wrangler/
+cloudflare/.wrangler/
+.dev.vars
+.dev.vars.*
+cloudflare/.dev.vars
+cloudflare/.dev.vars.*
+/cloudflare/whatsapp-secrets*.json
+!/cloudflare/whatsapp-secrets.example.json
+/cloudflare/telegram-secrets*.json
+!/cloudflare/telegram-secrets.example.json
+
+# Private data and local build artifacts must never enter GitHub.
+private/
+work/
+.wwebjs_auth/
+.wwebjs_cache/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.keystore
+*.exe
+*.apk
+*.aab
+*.idsig
+*.zip
