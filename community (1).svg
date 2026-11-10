@@ -1,0 +1,48 @@
+import type { LucideIcon } from 'lucide-react';
+
+export type Service = {
+  id: string;
+  name: string;
+  text: string;
+  icon: LucideIcon;
+  listing: string;
+};
+
+export type Person = { name: string; handle: string; city: string; bio: string };
+
+export type Category = 'swap' | 'help' | 'study' | 'aid' | 'task';
+export type UserProfile = {
+  id: string; name: string; handle: string; city: string; bio: string; avatar: string;
+  isDemo: boolean; followers: number; following: number; followed: boolean;
+};
+export type Listing = {
+  id: string; ownerId: string; category: Category; title: string; description: string;
+  city: string; district: string; price: number; image: string;
+  status: 'active' | 'completed'; createdAt: string; updatedAt: string;
+};
+export type ListingInput = Pick<Listing, 'category' | 'title' | 'description' | 'city' | 'district' | 'price' | 'image'>;
+export type Conversation = {
+  id: string; title: string; kind: 'direct' | 'group'; members: string[]; unread: number; updatedAt: string;
+};
+export type Message = {
+  id: string; conversationId: string; senderId: string; body: string; createdAt: string; read: boolean;
+};
+export type Notice = { id: string; text: string; href: string; read: boolean; createdAt: string };
+export type Snapshot = {
+  profile: UserProfile; people: UserProfile[]; listings: Listing[]; favorites: string[];
+  conversations: Conversation[]; messages: Message[]; notifications: Notice[];
+};
+export type Action =
+  | { action: 'profile'; data: Pick<UserProfile, 'name' | 'handle' | 'city' | 'bio' | 'avatar'> }
+  | { action: 'createListing'; data: ListingInput }
+  | { action: 'updateListing'; data: ListingInput & { id: string } }
+  | { action: 'listingStatus'; data: { id: string; status: 'active' | 'completed' } }
+  | { action: 'deleteListing'; data: { id: string } }
+  | { action: 'favorite'; data: { id: string; enabled: boolean } }
+  | { action: 'follow'; data: { id: string; enabled: boolean } }
+  | { action: 'conversation'; data: { members: string[]; title?: string } }
+  | { action: 'message'; data: { conversationId: string; body: string } }
+  | { action: 'readConversation'; data: { id: string } }
+  | { action: 'readNotifications'; data: Record<string, never> };
+
+export type ActionResult = { snapshot: Snapshot; id?: string };
