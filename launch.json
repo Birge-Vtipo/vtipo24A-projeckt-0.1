@@ -1,0 +1,127 @@
+'use client';
+
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Check, ImagePlus, MessageCircle, Pencil, Save, UserCheck, UserPlus } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import type { UserProfile } from '@/lib/types';
+import { useBirge } from './Header';
+import { Avatar } from './People';
+
+type ProfileDraft = Pick<UserProfile, 'name' | 'handle' | 'city' | 'bio' | 'avatar'>;
+const emptyDraft: ProfileDraft = { name: '', handle: '', city: '', bio: '', avatar: '' };
+
+function ProfileContent() {
+  const { data, loading, error: connectionError, mutate, refresh } = useBirge();
+  const requestedUser = useSearchParams().get('user');
+  const router = useRouter();
+  const [draft, setDraft] = useState<ProfileDraft>(emptyDraft);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [readingAvatar, setReadingAvatar] = useState(false);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+  const avatarVersion = useRef(0);
+
+  useEffect(() => {
+    if (!editing && returnFocus.current) { editButton.current?.focus(); returnFocus.current = false; }
+  }, [editing]);
+  useEffect(() => { setEditing(false); setError(''); setSaved(false); avatarVersion.current += 1; setReadingAvatar(false); }, [requestedUser]);
+
+  function close() { avatarVersion.current += 1; setReadingAvatar(false); returnFocus.current = true; setEditing(false); setError(''); }
+  function edit() {
+    if (!data) return;
+    const { name, handle, city, bio, avatar } = data.profile;
+    setDraft({ name, handle, city, bio, avatar }); setError(''); setSaved(false); setEditing(true);
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || readingAvatar) return;
+    const clean = { ...draft, name: draft.name.trim(), handle: draft.handle.trim(), city: draft.city.trim(), bio: draft.bio.trim() };
+    if (clean.name.length < 2 || !clean.city) { setError('Аты-жөніңіз кемінде 2 таңбадан тұруы керек. Қалаңызды да толтырыңыз.'); return; }
+    if (!/^@?[a-zA-Z0-9_.]{3,30}$/.test(clean.handle)) { setError('@аты 3–30 латын әрпінен, саннан, нүктеден немесе төменгі сызықтан тұруы керек.'); return; }
+    setBusy(true); setError('');
+    try { await mutate({ action: 'profile', data: clean }); close(); setSaved(true); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : 'Профиль сақталмады. Қайта көріңіз.'); }
+    finally { setBusy(false); }
+  }
+  function chooseAvatar(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    const version = ++avatarVersion.current;
+    setError(''); setReadingAvatar(false);
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) { setError('PNG, JPEG, WebP немесе GIF суретін таңдаңыз.'); return; }
+    if (file.size > 2 * 1024 * 1024 || !file.size) { setError('Сурет бос болмауы және 2 МБ-тан аспауы керек.'); return; }
+    setReadingAvatar(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (version !== avatarVersion.current) return;
+      setReadingAvatar(false);
+      const avatar = reader.result;
+      if (typeof avatar === 'string') setDraft(previous => ({ ...previous, avatar }));
+      else setError('Суретті оқу мүмкін болмады.');
+    };
+    reader.onerror = () => { if (version === avatarVersion.current) { setReadingAvatar(false); setError('Суретті оқу мүмкін болмады. Басқа суретті таңдаңыз.'); } };
+    reader.readAsDataURL(file);
+  }
+  async function follow(person: UserProfile) {
+    setBusy(true); setError('');
+    try { await mutate({ action: 'follow', data: { id: person.id, enabled: !person.followed } }); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : 'Жазылуды өзгерту мүмкін болмады.'); }
+    finally { setBusy(false); }
+  }
+  async function message(id: string) {
+    setBusy(true); setError('');
+    try {
+      const result = await mutate({ action: 'conversation', data: { members: [id] } });
+      if (!result.id) throw new Error('Чат ашылмады. Қайта көріңіз.');
+      router.push(`/chats?conversation=${encodeURIComponent(result.id)}`);
+    } catch (problem) { setError(problem instanceof Error ? problem.message : 'Чатты ашу мүмкін болмады.'); }
+    finally { setBusy(false); }
+  }
+
+  if (!data) return <><h1>Профиль</h1><section className="card social-empty">{loading ? <p role="status">Профиль жүктелуде…</p> : <><p role="alert">{connectionError || 'Профиль жүктелмеді.'}</p><button className="button soft" onClick={() => void refresh()}>Қайта жүктеу</button></>}</section></>;
+  const own = !requestedUser || requestedUser === data.profile.id;
+  const person = own ? data.profile : data.people.find(candidate => candidate.id === requestedUser);
+  if (!person) return <section className="card social-empty"><h1>Профиль табылмады</h1><p>Бұл адам тізімде жоқ.</p><Link className="button soft" href="/people">Адамдарды табу</Link></section>;
+  const listings = data.listings.filter(listing => listing.ownerId === person.id);
+
+  return <div className="social-page">
+    <div className="social-heading"><h1>{own ? 'Менің профилім' : 'Профиль'}</h1>{!own && <Link className="social-text-link" href="/people">Барлық адамдар</Link>}</div>
+    {connectionError && <p className="social-error" role="alert">{connectionError}</p>}
+    <article className="card panel profile-card social-profile">
+      {editing && own ? <form className="draft profile-form" onSubmit={submit}>
+        <h2>Профильді өңдеу</h2>
+        <div className="social-avatar-editor"><Avatar person={draft} large /><div><label className="social-upload"><ImagePlus size={18} />Сурет таңдау<input aria-label="Профиль суретін таңдау" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseAvatar} disabled={busy || readingAvatar} /></label><small>PNG, JPEG, WebP, GIF · 2 МБ дейін</small>{draft.avatar && <button className="social-text-button" type="button" disabled={busy || readingAvatar} onClick={() => setDraft(previous => ({ ...previous, avatar: '' }))}>Суретті алып тастау</button>}</div></div>
+        {readingAvatar && <p role="status">Сурет жүктелуде…</p>}
+        <label>Аты-жөнің<input autoFocus autoComplete="name" required minLength={2} maxLength={60} value={draft.name} disabled={busy} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
+        <label>@атың<input required maxLength={31} pattern="@?[a-zA-Z0-9_.]{3,30}" spellCheck={false} aria-describedby="handle-hint" value={draft.handle} disabled={busy} onChange={event => setDraft({ ...draft, handle: event.target.value })} /></label>
+        <small id="handle-hint">3–30 латын әрпі, сан, нүкте немесе төменгі сызық.</small>
+        <label>Қалаң<input autoComplete="address-level2" required maxLength={60} value={draft.city} disabled={busy} onChange={event => setDraft({ ...draft, city: event.target.value })} /></label>
+        <label>Өзім туралы<textarea rows={5} maxLength={500} value={draft.bio} disabled={busy} onChange={event => setDraft({ ...draft, bio: event.target.value })} /></label>
+        {error && <p className="social-error" role="alert">{error}</p>}
+        <div className="quick"><button className="button primary" type="submit" disabled={busy || readingAvatar}><Save size={19} />{busy ? 'Сақталуда…' : 'Сақтау'}</button><button className="button soft" type="button" disabled={busy} onClick={close}>Бас тарту</button></div>
+      </form> : <>
+        <div className="social-profile-identity"><Avatar person={person} large /><div><div className="social-name-line"><h2>{person.name}</h2>{person.isDemo && <span className="social-tag">Үлгі</span>}</div><small>{person.handle} · {person.city}</small></div></div>
+        <p className="profile-bio">{person.bio || 'Өзі туралы әлі жазбаған.'}</p>
+        <div className="social-stats"><div><strong>{listings.length}</strong><small>жарияланым</small></div><div><strong>{person.followers}</strong><small>оқырман</small></div><div><strong>{person.following}</strong><small>жазылым</small></div></div>
+        <div className="quick">{own ? <button ref={editButton} className="button soft" type="button" onClick={edit}><Pencil size={19} />Профильді өңдеу</button> : <>
+          <button className={`button ${person.followed ? 'soft' : 'primary'}`} type="button" disabled={busy} aria-pressed={person.followed} onClick={() => void follow(person)}>{person.followed ? <UserCheck size={18} /> : <UserPlus size={18} />}{person.followed ? 'Жазылдым' : 'Жазылу'}</button>
+          <button className="button soft" type="button" disabled={busy} onClick={() => void message(person.id)}><MessageCircle size={18} />Хат жазу</button>
+        </>}</div>
+        {error && <p className="social-error" role="alert">{error}</p>}
+      </>}
+      {saved && <p className="profile-saved" role="status"><Check size={18} />Өзгерістер сақталды.</p>}
+      {person.isDemo && <small>Бұл — үлгі профиль. Автоматты жауап жіберілмейді.</small>}
+    </article>
+    <section className="social-page" aria-labelledby="profile-listings-title"><div className="social-heading"><div><h2 id="profile-listings-title">{own ? 'Менің жарияланымдарым' : 'Жарияланымдар'}</h2><small>{listings.filter(listing => listing.status === 'active').length} белсенді · {listings.filter(listing => listing.status === 'completed').length} аяқталған</small></div>{own && <Link className="social-text-link" href="/board?mine=1">Барлығын басқару</Link>}</div>
+      {listings.length ? <div className="social-owned-grid">{listings.map(listing => <article className="card social-owned-listing" key={listing.id}><div><span className="social-tag">{listing.status === 'active' ? 'Белсенді' : 'Аяқталған'}</span><h3>{listing.title}</h3><small>{listing.city}{listing.district ? ` · ${listing.district}` : ''}</small></div><div className="quick"><Link className="social-text-link" href={`/board?listing=${encodeURIComponent(listing.id)}`}>Толығырақ</Link>{own && <Link className="social-text-link" href={`/create?edit=${encodeURIComponent(listing.id)}`}><Pencil size={15} />Өңдеу</Link>}</div></article>)}</div> : <div className="card social-empty"><p>{own ? 'Әзірге жарияланымдарыңыз жоқ.' : 'Әзірге жарияланым жоқ.'}</p>{own && <Link className="button primary" href="/create">Алғашқы жарияланым</Link>}</div>}
+    </section>
+  </div>;
+}
+
+export default function Profile() {
+  return <Suspense fallback={<p role="status">Профиль жүктелуде…</p>}><ProfileContent /></Suspense>;
+}
